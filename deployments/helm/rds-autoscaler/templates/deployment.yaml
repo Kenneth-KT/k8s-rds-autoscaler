@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "rds-autoscaler.fullname" . }}
+  labels:
+    {{- include "rds-autoscaler.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "rds-autoscaler.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "rds-autoscaler.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "rds-autoscaler.fullname" . }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: PODS_LABEL_SELECTOR
+              value: '{{ .Values.autoscaler.podsLabelSelector }}'
+            - name: CONNECTIONS_HEADROOM
+              value: '{{ .Values.autoscaler.connectionsHeadroom }}'
+            - name: SCALINGS_SET
+              value: '{{ .Values.autoscaler.scalingsSet }}'
+            - name: OPERATION_TIMEOUT
+              value: '{{ .Values.autoscaler.operationTimeout }}'
+            - name: DB_IDENTIFIER
+              value: '{{ .Values.autoscaler.dbIdentifier }}'
+            - name: DOWNSCALE_FORBIDDEN_WINDOW_SECONDS
+              value: '{{ .Values.autoscaler.downscaleForbiddenWindowSeconds }}'
+            - name: SYNC_INTERVAL_SECONDS
+              value: '{{ .Values.autoscaler.syncIntervalSeconds }}'
+            - name: AWS_ACCESS_KEY_ID
+              value: '{{ .Values.autoscaler.awsAccessKeyId }}'
+            - name: AWS_SECRET_ACCESS_KEY
+              value: '{{ .Values.autoscaler.awsSecretAccessKey }}'
+            - name: AWS_REGION
+              value: '{{ .Values.autoscaler.awsRegion }}'
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
